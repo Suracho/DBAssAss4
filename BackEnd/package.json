@@ -1,0 +1,14 @@
+{
+  "name": "hotel_booking",
+  "version": "1.0.0",
+  "description": "A website to search and manage booking for hotels around the world",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.1"
+  }
+}
