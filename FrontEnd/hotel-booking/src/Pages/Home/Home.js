@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useNavigate } from "react-router-dom";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
@@ -17,28 +18,45 @@ const Home = () => {
   const [location, setLocation] = useState("");
   const [propertyType, setPropertyType] = useState("");
   const [numberOfBedrooms, setNumberOfBedrooms] = useState("");
+  const [listings, setListings] = useState([]);
 
-  // Listings state (replace with actual API data in real implementation)
-  const [listings, setListings] = useState([
-    { listing_id: 1, name: "Cozy Cottage", summary: "A lovely cottage in the countryside.", daily_price: "$100", review_score_rating: 4.5, address: { market: "Barcelona" }, bedrooms: 3, property_type: "Cottage" },
-    { listing_id: 2, name: "Urban Apartment", summary: "Modern apartment in the heart of the city.", daily_price: "$120", review_score_rating: 4.8, address: { market: "Barcelona" }, bedrooms: 2, property_type: "Apartment" },
-    // Add more sample listings as needed
-  ]);
+  // to load at the beginning
+    useEffect(() => {
+        const fetchListings = async () => {
+        try {
+            const response = await axios.get("http://localhost:3000/listingsAndReviews/getRandom");
+            console.log(response.data);
+            console.log("response.data");
+            setListings(response.data);
+        } catch (error) {
+            console.error("Error fetching listings:", error);
+            setListings([]);
+        }
+        };
+    
+        fetchListings();
+    }, []);
 
   // Handler for form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Filter the listings based on form input
-    const filteredListings = listings.filter((listing) => {
-      return (
-        listing.address.market.toLowerCase() === location.toLowerCase() &&
-        (propertyType ? listing.property_type === propertyType : true) &&
-        (numberOfBedrooms ? listing.bedrooms === parseInt(numberOfBedrooms) : true)
-      );
-    });
 
-    setListings(filteredListings);
+    try {
+      // Make API call to backend
+      const response = await axios.get("http://localhost:3000/listingsAndReviews", {
+        params: {
+          location,
+          propertyType,
+          numberOfBedrooms
+        }
+      });
+
+      // Update listings state with the API response
+      setListings(response.data);
+    } catch (error) {
+      console.error("Error fetching listings:", error);
+      setListings([]); // Clear listings in case of error
+    }
   };
 
   return (
@@ -92,7 +110,7 @@ const Home = () => {
       <Box>
         <Typography variant="h5" gutterBottom>Available Properties</Typography>
         {listings.length > 0 ? (
-          listings.map(listing => <ListingCard key={listing.listing_id} listing={listing} />)
+          listings.map(listing => <ListingCard key={listing._id} listing={listing} />)
         ) : (
           <Typography>No properties found.</Typography>
         )}
