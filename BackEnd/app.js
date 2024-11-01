@@ -65,6 +65,30 @@ app.get("/listingsAndReviews", async (req, res) => {
   }
 });
 
+// Get a specific listing by ID using query parameters
+app.get("/bookings", async (req, res) => {
+  try {
+    const { _id } = req.query; // Get _id from query parameters
+
+    if (!_id) {
+      return res.status(400).send("ID is a required field.");
+    }
+
+    console.log("ID is " + _id);
+    const collection = db.collection("listingsAndReviews");
+    const listing = await collection.findOne({ _id: _id });
+
+    if (!listing) {
+      return res.status(404).send("Listing not found");
+    }
+
+    res.status(200).send(listing);
+  } catch (error) {
+    console.error("Error fetching listing:", error);
+    res.status(500).send("Error fetching listing");
+  }
+});
+
 
 
 app.post('/submit-form', (req, res) => {

@@ -11,7 +11,7 @@ export default function ListingCard({ listing }){
     <Card key={listing.listing_id} sx={{ mb: 2 }}>
       <CardContent>
         <Typography variant="h6">
-          <Link href={`/bookings?listing_id=${listing._id}`}>
+          <Link href={`/bookings/${listing._id}`}>
             {listing.name}
           </Link>
         </Typography>

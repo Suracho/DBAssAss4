@@ -13,7 +13,7 @@ function App() {
       <NavBar />
          <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/bookings" element={<Bookings />} />
+            <Route path="/bookings/:_id" element={<Bookings />} />
             <Route path="/bookings-confirmation" element={<BookingsConfirmation />} />
             <Route path="*" element={<E404Page />} />
          </Routes>
