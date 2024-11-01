@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
@@ -8,12 +8,12 @@ import Box from '@mui/material/Box';
 import { CircularProgress } from '@mui/material';
 
 export default function Bookings() {
-  const { _id } = useParams(); // Extract listing_id from URL
-  const [listing, setListing] = useState(null); // State to store the listing data
-  const [loading, setLoading] = useState(true); // Loading state for data fetch
-  const [error, setError] = useState(null); // Error state for fetch failures
+  const { _id } = useParams();
+  const navigate = useNavigate();
+  const [listing, setListing] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [bookings, setBookings] = useState([]);
 
-  // Form state
   const [formData, setFormData] = useState({
     startDate: '',
     endDate: '',
@@ -23,27 +23,36 @@ export default function Bookings() {
     mobile: '',
     postalAddress: '',
     residentialAddress: '',
+    numberOfGuests: 1,
   });
 
   useEffect(() => {
-    // Fetch listing data based on listing_id
+    // Fetch listing details
     const fetchListing = async () => {
       try {
-        console.log("Fetching listing with ID: " + _id);
         const response = await axios.get(`http://localhost:3000/bookings?_id=${_id}`);
         setListing(response.data);
       } catch (error) {
         console.error('Error fetching listing:', error);
-        setError('Failed to load listing. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
-    
+
+    // Fetch bookings with client details for the specific listing
+    const fetchBookings = async () => {
+      try {
+        const response = await axios.get(`http://localhost:3000/listingsAndReviews/${_id}/bookings`);
+        setBookings(response.data); // List of bookings with client details
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+      }
+    };
+
     fetchListing();
+    fetchBookings();
   }, [_id]);
 
-  // Handle input changes for form fields
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
@@ -52,65 +61,61 @@ export default function Bookings() {
     }));
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Perform form submission logic here, e.g., sending booking data to the backend
-      console.log("Booking details:", formData);
-      alert("Booking submitted successfully!");
+      // Check if client exists or create a new client
+      const clientData = {
+        name: formData.clientName,
+        email: formData.email,
+        phone: formData.phone,
+        mobile: formData.mobile,
+        postal_address: formData.postalAddress,
+        residential_address: formData.residentialAddress,
+      };
+      const clientResponse = await axios.post('http://localhost:3000/clients', clientData);
 
-      // Clear form after submission
-      setFormData({
-        startDate: '',
-        endDate: '',
-        clientName: '',
-        email: '',
-        phone: '',
-        mobile: '',
-        postalAddress: '',
-        residentialAddress: '',
-      });
+      // Prepare booking data
+      const bookingData = {
+        client_id: clientResponse.data._id, // Use the client ID returned from the API
+        arrival_date: formData.startDate,
+        departure_date: formData.endDate,
+        number_of_guests: formData.numberOfGuests,
+        guests: [{ name: formData.clientName }], // Example guest array, can be expanded
+      };
+
+      // Submit the booking to the listing
+      await axios.post(`http://localhost:3000/listingsAndReviews/${_id}/bookings`, bookingData);
+
+      alert("Booking submitted successfully!");
+      navigate("/bookings-confirmation");
     } catch (error) {
-      console.error('Error submitting form:', error);
-      alert("Failed to submit booking. Please try again.");
+      console.error("Error submitting booking:", error);
+      alert("Error submitting booking. Please try again.");
     }
   };
 
-  if (loading) {
-    return <CircularProgress />;
-  }
+  if (loading) return <CircularProgress />;
 
-  if (error) {
-    return <Typography color="error">{error}</Typography>;
-  }
-
-  if (!listing) {
-    return <Typography>No listing found for this ID.</Typography>;
-  }
+  if (!listing) return <Typography>No listing found for this ID.</Typography>;
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4 }}>
       <Typography variant="h4" gutterBottom>Let's Book the Property</Typography>
 
-      {/* Display Listing Information */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h5">{listing.name}</Typography>
         <Typography variant="body1">{listing.summary}</Typography>
         <Typography variant="body2">Price per night: $ {listing.price?.$numberDecimal || 'N/A'}</Typography>
-        <Typography variant="body2">
-          Rating: {listing.review_scores?.review_scores_rating || 'N/A'}
-        </Typography>
+        <Typography variant="body2">Rating: {listing.review_scores?.review_scores_rating || 'N/A'}</Typography>
       </Box>
 
-      {/* Booking Form */}
       <Typography variant="h6" gutterBottom>Booking Details</Typography>
       <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
         <TextField
           label="Check In"
           name="startDate"
           type="date"
-          variant="standard"
           fullWidth
           required
           InputLabelProps={{ shrink: true }}
@@ -122,7 +127,6 @@ export default function Bookings() {
           label="Check Out"
           name="endDate"
           type="date"
-          variant="standard"
           fullWidth
           required
           InputLabelProps={{ shrink: true }}
@@ -130,38 +134,37 @@ export default function Bookings() {
           onChange={handleInputChange}
           sx={{ mb: 2 }}
         />
-        
-        <Typography variant="h6" gutterBottom>Your Details</Typography>
         <TextField
-          label="Your Name"
+          label="Client Name"
           name="clientName"
-          variant="standard"
           fullWidth
           required
-          placeholder="Please your name (mandatory)"
           value={formData.clientName}
           onChange={handleInputChange}
           sx={{ mb: 2 }}
         />
         <TextField
-          label="Email Address"
+          label="Email"
           name="email"
           type="email"
-          variant="standard"
           fullWidth
           required
-          placeholder="Please your email address (mandatory)"
           value={formData.email}
           onChange={handleInputChange}
           sx={{ mb: 2 }}
         />
         <TextField
-          label="Your Mobile No"
-          name="mobile"
-          variant="standard"
+          label="Phone"
+          name="phone"
           fullWidth
-          required
-          placeholder="Please your mobile no: (04xxxx xxx xxx) (mandatory)"
+          value={formData.phone}
+          onChange={handleInputChange}
+          sx={{ mb: 2 }}
+        />
+        <TextField
+          label="Mobile"
+          name="mobile"
+          fullWidth
           value={formData.mobile}
           onChange={handleInputChange}
           sx={{ mb: 2 }}
@@ -169,9 +172,7 @@ export default function Bookings() {
         <TextField
           label="Postal Address"
           name="postalAddress"
-          variant="standard"
           fullWidth
-          placeholder="Please provide your postal address"
           value={formData.postalAddress}
           onChange={handleInputChange}
           sx={{ mb: 2 }}
@@ -179,15 +180,39 @@ export default function Bookings() {
         <TextField
           label="Residential Address"
           name="residentialAddress"
-          variant="standard"
           fullWidth
-          placeholder="Please provide your residential address (cannot be a PO box address)"
           value={formData.residentialAddress}
           onChange={handleInputChange}
           sx={{ mb: 2 }}
         />
-
+        <TextField
+          label="Number of Guests"
+          name="numberOfGuests"
+          type="number"
+          fullWidth
+          required
+          value={formData.numberOfGuests}
+          onChange={handleInputChange}
+          sx={{ mb: 2 }}
+        />
         <Button type="submit" variant="contained" fullWidth>Book Now</Button>
+      </Box>
+
+      <Typography variant="h6" gutterBottom>Existing Bookings</Typography>
+      <Box sx={{ mb: 4 }}>
+        {bookings.length > 0 ? (
+          bookings.map((booking) => (
+            <Box key={booking.booking_id} sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 2 }}>
+              <Typography variant="body1">Client Name: {booking.clientName}</Typography>
+              <Typography variant="body1">Client Email: {booking.clientEmail}</Typography>
+              <Typography variant="body2">Check In: {new Date(booking.arrival_date).toLocaleDateString()}</Typography>
+              <Typography variant="body2">Check Out: {new Date(booking.departure_date).toLocaleDateString()}</Typography>
+              <Typography variant="body2">Guests: {booking.number_of_guests}</Typography>
+            </Box>
+          ))
+        ) : (
+          <Typography>No bookings found for this listing.</Typography>
+        )}
       </Box>
     </Box>
   );
